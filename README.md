@@ -91,12 +91,11 @@ void init_game(GameState *game) {
     game->size = 0;
     game->matrix = NULL;
     game->words = NULL;
-    game->word_count = 0;
 }
 
 void cleanup_game(GameState *game) {
-    if(game->matrix) {
-        for(int i = 0; i < game->size; i++) {
+    if (game->matrix) {
+        for (int i = 0; i < game->size; i++) {
             free(game->matrix[i]);
         }
         free(game->matrix);
@@ -106,25 +105,25 @@ void cleanup_game(GameState *game) {
 
 int load_words(const char *filename, Word **words) {
     FILE *file = fopen(filename, "rb");
-    if(!file) return 0;
+    if (!file) return 0;
     
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     rewind(file);
     
     int count = file_size / sizeof(Word);
-    if(count == 0) {
+    if (count == 0) {
         fclose(file);
         return 0;
     }
     
     *words = malloc(count * sizeof(Word));
-    if(!*words) {
+    if (!*words) {
         fclose(file);
         return 0;
     }
     
-    if(fread(*words, sizeof(Word), count, file) != count) {
+    if (fread(*words, sizeof(Word), count, file) != count) {
         free(*words);
         fclose(file);
         return 0;
@@ -136,7 +135,7 @@ int load_words(const char *filename, Word **words) {
 
 int save_words(const char *filename, Word *words, int count) {
     FILE *file = fopen(filename, "wb");
-    if(!file) return 0;
+    if (!file) return 0;
     
     int result = fwrite(words, sizeof(Word), count, file) == count;
     fclose(file);
@@ -158,9 +157,9 @@ void show_main_menu() {
         
         choice = get_valid_int("Escolha uma opção", 0, 4);
         
-        switch(choice) {
-            case 1: 
-                start_new_game(&game); 
+        switch (choice) {
+            case 1:
+                start_new_game(&game);
                 cleanup_game(&game);
                 init_game(&game);
                 break;
@@ -170,7 +169,7 @@ void show_main_menu() {
             case 0: printf("Até logo!\n"); break;
             default: printf("Opção inválida!\n");
         }
-    } while(choice != 0);
+    } while (choice != 0);
     
     cleanup_game(&game);
 }
@@ -182,7 +181,7 @@ void start_new_game(GameState *game) {
     setup_game_difficulty(game);
     
     game->word_count = load_words(WORD_FILE, &game->words);
-    if(game->word_count < 5) {
+    if (game->word_count < 5) {
         printf("Não há palavras suficientes no dicionário (mínimo 5).\n");
         return;
     }
@@ -199,7 +198,7 @@ void setup_game_difficulty(GameState *game) {
     
     game->difficulty = get_valid_int("Escolha a dificuldade", 1, 3);
     
-    switch(game->difficulty) {
+    switch (game->difficulty) {
         case 1:
             game->size = 7;
             game->word_count = 5;
@@ -216,33 +215,39 @@ void setup_game_difficulty(GameState *game) {
 }
 
 void generate_matrix(GameState *game) {
+    // 1) cria matriz toda vazia
     game->matrix = malloc(game->size * sizeof(char*));
-    for(int i = 0; i < game->size; i++) {
+    for (int i = 0; i < game->size; i++) {
         game->matrix[i] = malloc(game->size * sizeof(char));
-        for(int j = 0; j < game->size; j++) {
-            game->matrix[i][j] = 'A' + rand() % 26;
+        for (int j = 0; j < game->size; j++) {
+            game->matrix[i][j] = ' ';
         }
     }
-    
-    for(int i = 0; i < game->word_count; i++) {
-        int word_index;
-        do {
-            word_index = rand() % game->word_count;
-        } while(strlen(game->words[word_index].text) > game->size);
-        
-        if(!place_word(game, game->words[word_index].text)) {
-            printf("Não foi possível posicionar a palavra: %s\n", game->words[word_index].text);
+
+    // 2) posiciona cada palavra em sequência
+    for (int i = 0; i < game->word_count; i++) {
+        if (!place_word(game, game->words[i].text)) {
+            printf("Não foi possível posicionar a palavra: %s\n", game->words[i].text);
+        }
+    }
+
+    // 3) preenche os espaços restantes com letras aleatórias
+    for (int i = 0; i < game->size; i++) {
+        for (int j = 0; j < game->size; j++) {
+            if (game->matrix[i][j] == ' ') {
+                game->matrix[i][j] = 'A' + rand() % 26;
+            }
         }
     }
 }
 
 int place_word(GameState *game, const char *word) {
-    int directions[8][2] = {{0,1}, {1,0}, {0,-1}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
+    int directions[8][2] = {{0,1},{1,0},{0,-1},{-1,0},{1,1},{1,-1},{-1,1},{-1,-1}};
     int word_len = strlen(word);
     int attempts = 0;
     int max_attempts = game->size * game->size * 8;
     
-    while(attempts < max_attempts) {
+    while (attempts < max_attempts) {
         int dir_index = rand() % 8;
         int row = rand() % game->size;
         int col = rand() % game->size;
@@ -253,36 +258,34 @@ int place_word(GameState *game, const char *word) {
         int end_row = row + dr * (word_len - 1);
         int end_col = col + dc * (word_len - 1);
         
-        if(end_row < 0 || end_row >= game->size || end_col < 0 || end_col >= game->size) {
+        if (end_row < 0 || end_row >= game->size || end_col < 0 || end_col >= game->size) {
             attempts++;
             continue;
         }
         
         bool valid = true;
-        for(int i = 0; i < word_len; i++) {
+        for (int i = 0; i < word_len; i++) {
             int r = row + dr * i;
             int c = col + dc * i;
             char current = game->matrix[r][c];
-            
-            if(current != toupper(word[i]) && current != ' ') {
+            if (current != ' ' && current != toupper(word[i])) {
                 valid = false;
                 break;
             }
         }
-        
-        if(!valid) {
+        if (!valid) {
             attempts++;
             continue;
         }
         
-        for(int i = 0; i < word_len; i++) {
+        for (int i = 0; i < word_len; i++) {
             int r = row + dr * i;
             int c = col + dc * i;
             game->matrix[r][c] = toupper(word[i]);
         }
         
-        for(int i = 0; i < game->word_count; i++) {
-            if(strcmp(game->words[i].text, word) == 0) {
+        for (int i = 0; i < game->word_count; i++) {
+            if (strcmp(game->words[i].text, word) == 0) {
                 game->words[i].start_row = row;
                 game->words[i].start_col = col;
                 game->words[i].found = false;
@@ -300,12 +303,12 @@ void play_game(GameState *game) {
     game->found_words = 0;
     game->attempts = 0;
     
-    while(game->found_words < game->word_count) {
+    while (game->found_words < game->word_count) {
         show_color_matrix(game);
         
         printf("\nPalavras restantes (%d/%d):\n", game->found_words, game->word_count);
-        for(int i = 0; i < game->word_count; i++) {
-            if(!game->words[i].found) {
+        for (int i = 0; i < game->word_count; i++) {
+            if (!game->words[i].found) {
                 printf("- %s\n", game->words[i].text);
             }
         }
@@ -316,32 +319,34 @@ void play_game(GameState *game) {
         
         int choice = get_valid_int("Escolha", 1, 3);
         
-        if(choice == 1) {
+        if (choice == 1) {
             printf("Digite as coordenadas (linha coluna linha coluna): ");
             int start_row, start_col, end_row, end_col;
-            if(scanf("%d %d %d %d", &start_row, &start_col, &end_row, &end_col) != 4) {
+            if (scanf("%d %d %d %d", &start_row, &start_col, &end_row, &end_col) != 4) {
                 printf("Entrada inválida!\n");
                 clear_input_buffer();
                 continue;
             }
             
-            if(start_row < 0 || start_row >= game->size || start_col < 0 || start_col >= game->size ||
-               end_row < 0 || end_row >= game->size || end_col < 0 || end_col >= game->size) {
+            if (start_row < 0 || start_row >= game->size || start_col < 0 || start_col >= game->size ||
+                end_row < 0   || end_row   >= game->size || end_col   < 0 || end_col   >= game->size) {
                 printf("Coordenadas fora da matriz!\n");
                 continue;
             }
             
             game->attempts++;
-            if(check_word(game, start_row, start_col, end_row, end_col)) {
+            if (check_word(game, start_row, start_col, end_row, end_col)) {
                 printf(COLOR_GREEN "Parabéns! Você encontrou uma palavra!\n" COLOR_RESET);
             } else {
                 printf("Nenhuma palavra encontrada nessas coordenadas.\n");
             }
-        } else if(choice == 2) {
+        }
+        else if (choice == 2) {
             printf("Dica: Primeira letra de uma palavra não encontrada está em (%d,%d)\n",
-                   game->words[game->found_words].start_row, 
+                   game->words[game->found_words].start_row,
                    game->words[game->found_words].start_col);
-        } else {
+        }
+        else {
             printf("Jogo encerrado.\n");
             break;
         }
@@ -352,16 +357,17 @@ void play_game(GameState *game) {
 
 void show_color_matrix(const GameState *game) {
     printf("\n   ");
-    for(int j = 0; j < game->size; j++) printf("%2d ", j);
+    for (int j = 0; j < game->size; j++) printf("%2d ", j);
     putchar('\n');
     
-    for(int i = 0; i < game->size; i++) {
+    for (int i = 0; i < game->size; i++) {
         printf("%2d ", i);
-        for(int j = 0; j < game->size; j++) {
-            if(game->matrix[i][j] >= '0' && game->matrix[i][j] <= '9') {
-                printf(COLOR_GREEN " %c " COLOR_RESET, game->matrix[i][j]);
+        for (int j = 0; j < game->size; j++) {
+            char c = game->matrix[i][j];
+            if (c >= '0' && c <= '9') {
+                printf(COLOR_GREEN " %c " COLOR_RESET, c);
             } else {
-                printf(" %c ", game->matrix[i][j]);
+                printf(" %c ", c);
             }
         }
         putchar('\n');
@@ -375,16 +381,16 @@ int check_word(GameState *game, int start_row, int start_col, int end_row, int e
     int len = (dr != 0) ? abs(end_row - start_row) + 1 : abs(end_col - start_col) + 1;
     
     char extracted[MAX_WORD_LEN + 1] = {0};
-    for(int i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++) {
         extracted[i] = tolower(game->matrix[start_row + dr * i][start_col + dc * i]);
     }
     
-    for(int i = 0; i < game->word_count; i++) {
-        if(!game->words[i].found && strcmp(extracted, game->words[i].text) == 0) {
+    for (int i = 0; i < game->word_count; i++) {
+        if (!game->words[i].found && strcmp(extracted, game->words[i].text) == 0) {
             game->words[i].found = true;
             game->found_words++;
             
-            for(int j = 0; j < len; j++) {
+            for (int j = 0; j < len; j++) {
                 int r = start_row + dr * j;
                 int c = start_col + dc * j;
                 game->matrix[r][c] = '0' + (i + 1);
@@ -407,7 +413,7 @@ void calculate_score(GameState *game) {
     printf("Tentativas: %d\n", game->attempts);
     printf("Pontuação: %d\n", game->score);
     
-    if(game->found_words == game->word_count) {
+    if (game->found_words == game->word_count) {
         printf(COLOR_GREEN "Parabéns! Você encontrou todas as palavras!\n" COLOR_RESET);
     }
     
@@ -426,21 +432,21 @@ void save_high_score(const GameState *game) {
     int count = 0;
     
     FILE *file = fopen(SCORE_FILE, "rb");
-    if(file) {
+    if (file) {
         count = fread(scores, sizeof(HighScore), MAX_HIGH_SCORES, file);
         fclose(file);
     }
     
-    if(count < MAX_HIGH_SCORES) {
+    if (count < MAX_HIGH_SCORES) {
         scores[count++] = new_score;
     } else {
         scores[MAX_HIGH_SCORES] = new_score;
         count = MAX_HIGH_SCORES + 1;
     }
     
-    for(int i = 0; i < count - 1; i++) {
-        for(int j = i + 1; j < count; j++) {
-            if(scores[i].score < scores[j].score) {
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = i + 1; j < count; j++) {
+            if (scores[i].score < scores[j].score) {
                 HighScore temp = scores[i];
                 scores[i] = scores[j];
                 scores[j] = temp;
@@ -449,7 +455,7 @@ void save_high_score(const GameState *game) {
     }
     
     file = fopen(SCORE_FILE, "wb");
-    if(file) {
+    if (file) {
         fwrite(scores, sizeof(HighScore), count > MAX_HIGH_SCORES ? MAX_HIGH_SCORES : count, file);
         fclose(file);
     }
@@ -462,18 +468,18 @@ void show_high_scores() {
     int count = 0;
     
     FILE *file = fopen(SCORE_FILE, "rb");
-    if(file) {
+    if (file) {
         count = fread(scores, sizeof(HighScore), MAX_HIGH_SCORES, file);
         fclose(file);
     }
     
-    if(count == 0) {
+    if (count == 0) {
         printf("Nenhum recorde ainda.\n");
         return;
     }
     
     printf("%-20s %-10s %s\n", "Jogador", "Pontuação", "Data");
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         char date_str[20];
         strftime(date_str, sizeof(date_str), "%d/%m/%Y", localtime(&scores[i].date));
         printf("%-20s %-10d %s\n", scores[i].player_name, scores[i].score, date_str);
@@ -492,13 +498,13 @@ void show_word_manager() {
         
         choice = get_valid_int("Escolha uma opção", 0, 4);
         
-        switch(choice) {
+        switch (choice) {
             case 1: add_word_to_dict(); break;
             case 2: edit_word_in_dict(); break;
             case 3: remove_word_from_dict(); break;
             case 4: list_words_in_dict(); break;
         }
-    } while(choice != 0);
+    } while (choice != 0);
 }
 
 void add_word_to_dict() {
@@ -507,20 +513,20 @@ void add_word_to_dict() {
     fgets(new_word.text, MAX_WORD_LEN, stdin);
     new_word.text[strcspn(new_word.text, "\n")] = '\0';
     
-    if(strlen(new_word.text) < MIN_WORD_LEN) {
+    if (strlen(new_word.text) < MIN_WORD_LEN) {
         printf("Palavra muito curta!\n");
         return;
     }
     
-    for(int i = 0; new_word.text[i]; i++) {
+    for (int i = 0; new_word.text[i]; i++) {
         new_word.text[i] = tolower(new_word.text[i]);
     }
     
     Word *words = NULL;
     int count = load_words(WORD_FILE, &words);
     
-    for(int i = 0; i < count; i++) {
-        if(strcmp(words[i].text, new_word.text) == 0) {
+    for (int i = 0; i < count; i++) {
+        if (strcmp(words[i].text, new_word.text) == 0) {
             printf("Esta palavra já existe no dicionário!\n");
             free(words);
             return;
@@ -528,7 +534,7 @@ void add_word_to_dict() {
     }
     
     Word *new_words = realloc(words, (count + 1) * sizeof(Word));
-    if(!new_words) {
+    if (!new_words) {
         printf("Erro ao alocar memória!\n");
         free(words);
         return;
@@ -539,7 +545,7 @@ void add_word_to_dict() {
     words[count].length = strlen(new_word.text);
     words[count].difficulty = 2;
     
-    if(save_words(WORD_FILE, words, count + 1)) {
+    if (save_words(WORD_FILE, words, count + 1)) {
         printf("Palavra adicionada com sucesso!\n");
     } else {
         printf("Erro ao salvar palavra!\n");
@@ -551,13 +557,13 @@ void add_word_to_dict() {
 void edit_word_in_dict() {
     Word *words = NULL;
     int count = load_words(WORD_FILE, &words);
-    if(count == 0) {
+    if (count == 0) {
         printf("Nenhuma palavra cadastrada.\n");
         return;
     }
     
     printf("\nLista de palavras:\n");
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         printf("%d. %s\n", i+1, words[i].text);
     }
     
@@ -570,20 +576,20 @@ void edit_word_in_dict() {
     fgets(new_word, MAX_WORD_LEN, stdin);
     new_word[strcspn(new_word, "\n")] = '\0';
     
-    if(strlen(new_word) == 0) {
+    if (strlen(new_word) == 0) {
         printf("Edição cancelada.\n");
         free(words);
         return;
     }
     
-    if(strlen(new_word) < MIN_WORD_LEN) {
+    if (strlen(new_word) < MIN_WORD_LEN) {
         printf("Palavra muito curta!\n");
         free(words);
         return;
     }
     
-    for(int i = 0; i < count; i++) {
-        if(i != index && strcmp(words[i].text, new_word) == 0) {
+    for (int i = 0; i < count; i++) {
+        if (i != index && strcmp(words[i].text, new_word) == 0) {
             printf("Esta palavra já existe no dicionário!\n");
             free(words);
             return;
@@ -593,7 +599,7 @@ void edit_word_in_dict() {
     strcpy(words[index].text, new_word);
     words[index].length = strlen(new_word);
     
-    if(save_words(WORD_FILE, words, count)) {
+    if (save_words(WORD_FILE, words, count)) {
         printf("Palavra atualizada com sucesso!\n");
     } else {
         printf("Erro ao salvar alterações!\n");
@@ -605,13 +611,13 @@ void edit_word_in_dict() {
 void remove_word_from_dict() {
     Word *words = NULL;
     int count = load_words(WORD_FILE, &words);
-    if(count == 0) {
+    if (count == 0) {
         printf("Nenhuma palavra cadastrada.\n");
         return;
     }
     
     printf("\nLista de palavras:\n");
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         printf("%d. %s\n", i+1, words[i].text);
     }
     
@@ -622,12 +628,12 @@ void remove_word_from_dict() {
     scanf(" %c", &confirm);
     clear_input_buffer();
     
-    if(tolower(confirm) == 's') {
-        for(int i = index; i < count-1; i++) {
+    if (tolower(confirm) == 's') {
+        for (int i = index; i < count-1; i++) {
             words[i] = words[i+1];
         }
         
-        if(save_words(WORD_FILE, words, count-1)) {
+        if (save_words(WORD_FILE, words, count-1)) {
             printf("Palavra removida com sucesso!\n");
         } else {
             printf("Erro ao salvar alterações!\n");
@@ -642,7 +648,7 @@ void remove_word_from_dict() {
 void list_words_in_dict() {
     Word *words = NULL;
     int count = load_words(WORD_FILE, &words);
-    if(count == 0) {
+    if (count == 0) {
         printf("Nenhuma palavra cadastrada.\n");
         return;
     }
@@ -650,7 +656,7 @@ void list_words_in_dict() {
     print_header("LISTA DE PALAVRAS");
     printf("Total: %d palavras\n\n", count);
     
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         printf("%3d. %-20s (Tamanho: %2d, Dificuldade: %d)\n", 
                i+1, words[i].text, words[i].length, words[i].difficulty);
     }
@@ -667,21 +673,23 @@ void show_settings() {
     
     int choice = get_valid_int("Escolha uma opção", 0, 3);
     
-    switch(choice) {
-        case 1:
+    switch (choice) {
+        case 1: {
             printf("Novo caminho para arquivo de palavras: ");
             char new_word_file[256];
             fgets(new_word_file, sizeof(new_word_file), stdin);
             new_word_file[strcspn(new_word_file, "\n")] = '\0';
             WORD_FILE = strdup(new_word_file);
             break;
-        case 2:
+        }
+        case 2: {
             printf("Novo caminho para arquivo de recordes: ");
             char new_score_file[256];
             fgets(new_score_file, sizeof(new_score_file), stdin);
             new_score_file[strcspn(new_score_file, "\n")] = '\0';
             SCORE_FILE = strdup(new_score_file);
             break;
+        }
         case 3:
             WORD_FILE = "palavras.dat";
             SCORE_FILE = "scores.dat";
@@ -692,14 +700,14 @@ void show_settings() {
 
 int get_valid_int(const char *prompt, int min, int max) {
     int value;
-    while(1) {
+    while (1) {
         printf("%s (%d-%d): ", prompt, min, max);
-        if(scanf("%d", &value) != 1) {
+        if (scanf("%d", &value) != 1) {
             printf("Entrada inválida. Digite um número.\n");
             clear_input_buffer();
             continue;
         }
-        if(value >= min && value <= max) {
+        if (value >= min && value <= max) {
             clear_input_buffer();
             return value;
         }
@@ -709,7 +717,7 @@ int get_valid_int(const char *prompt, int min, int max) {
 
 void clear_input_buffer() {
     int c;
-    while((c = getchar()) != '\n' && c != EOF);
+    while ((c = getchar()) != '\n' && c != EOF);
 }
 
 void print_centered(const char *text) {
@@ -717,15 +725,15 @@ void print_centered(const char *text) {
     int len = strlen(text);
     int padding = (width - len) / 2;
     
-    for(int i = 0; i < padding; i++) putchar(' ');
+    for (int i = 0; i < padding; i++) putchar(' ');
     printf("%s\n", text);
 }
 
 void print_header(const char *title) {
     printf("\n");
-    for(int i = 0; i < 50; i++) putchar('=');
+    for (int i = 0; i < 50; i++) putchar('=');
     printf("\n");
     print_centered(title);
-    for(int i = 0; i < 50; i++) putchar('=');
+    for (int i = 0; i < 50; i++) putchar('=');
     printf("\n");
 }
